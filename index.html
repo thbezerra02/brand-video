@@ -46,7 +46,7 @@
     .toast {
       position: fixed; bottom: calc(20px + var(--safe-b)); left: 50%; transform: translateX(-50%);
       background: #1e293b; color: #fff; padding: 12px 20px; border-radius: 24px;
-      font-size: 0.9rem; z-index: 300; max-width: 90%; text-align: center;
+      font-size: 0.9rem; z-index: 9999; max-width: 90%; text-align: center;
       box-shadow: 0 4px 20px rgba(0,0,0,.4); opacity: 0; pointer-events: none; transition: .2s;
     }
     .toast.show { opacity: 1; }
@@ -990,8 +990,15 @@
         $("prompts-box").classList.remove("hidden");
       } else $("prompts-box").classList.add("hidden");
       const img = new Image();
+      img.crossOrigin = "anonymous"; // evita canvas "tainted" com imagem do Supabase
       img.onload = () => { rec.photo = img; };
-      img.src = c.image;
+      img.onerror = () => {
+        console.warn("Falha ao carregar banner (CORS?). Tentando sem crossOrigin");
+        const img2 = new Image();
+        img2.onload = () => { rec.photo = img2; };
+        img2.src = c.image;
+      };
+      img.src = c.image + (c.image.includes("?") ? "&" : "?") + "t=" + Date.now();
       showScreen("gravarIntro");
     }
 
@@ -1044,17 +1051,26 @@
       ctx.restore();
     }
     function paint() {
-      const camH = OUT_H - FOOTER_H;
-      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, OUT_W, OUT_H);
-      drawCamera(ctx, $("cam-video"), OUT_W, camH, rec.facing === "user");
-      ctx.fillStyle = "#fff"; ctx.fillRect(0, camH - 3, OUT_W, 3);
-      if (rec.photo) {
-        const pw = rec.photo.width, ph = rec.photo.height;
-        const scale = Math.max(OUT_W / pw, FOOTER_H / ph);
-        const dw = pw * scale, dh = ph * scale;
-        ctx.drawImage(rec.photo, (OUT_W - dw) / 2, camH + (FOOTER_H - dh) / 2, dw, dh);
-      } else {
-        ctx.fillStyle = "#1e293b"; ctx.fillRect(0, camH, OUT_W, FOOTER_H);
+      try {
+        const camH = OUT_H - FOOTER_H;
+        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, OUT_W, OUT_H);
+        drawCamera(ctx, $("cam-video"), OUT_W, camH, rec.facing === "user");
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, camH - 3, OUT_W, 3);
+        if (rec.photo) {
+          try {
+            const pw = rec.photo.width, ph = rec.photo.height;
+            const scale = Math.max(OUT_W / pw, FOOTER_H / ph);
+            const dw = pw * scale, dh = ph * scale;
+            ctx.drawImage(rec.photo, (OUT_W - dw) / 2, camH + (FOOTER_H - dh) / 2, dw, dh);
+          } catch (e) {
+            // CORS / tainted — desenha só fundo do rodapé
+            ctx.fillStyle = "#1e293b"; ctx.fillRect(0, camH, OUT_W, FOOTER_H);
+          }
+        } else {
+          ctx.fillStyle = "#1e293b"; ctx.fillRect(0, camH, OUT_W, FOOTER_H);
+        }
+      } catch (e) {
+        console.warn("paint", e);
       }
     }
     function startLoop() {
@@ -1070,49 +1086,116 @@
       return "";
     }
 
-    $("btn-rec").onclick = () => { if (rec.recording) stopRecording(); else startRecording(); };
+    $("btn-rec").onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (rec.recording) stopRecording();
+      else startRecording();
+    };
 
-    function startRecording() {
-      if (!rec.stream) return toast("Câmera não pronta");
-      if (!rec.anim) startLoop();
-      rec.chunks = []; rec.recording = true; rec.seconds = 0; rec.blob = null;
-      const canvasStream = canvas.captureStream(isMobile() ? 25 : FPS);
-      const aTracks = rec.stream.getAudioTracks();
-      if (aTracks.length) {
-        try { canvasStream.addTrack(isMobile() ? aTracks[0] : aTracks[0].clone()); }
-        catch { try { canvasStream.addTrack(aTracks[0]); } catch (e) {} }
-      }
-      rec.canvasStream = canvasStream;
-      const mime = pickMime();
-      const opts = { videoBitsPerSecond: isMobile() ? 1200000 : 2500000, audioBitsPerSecond: 128000 };
-      if (mime) opts.mimeType = mime;
-      try { rec.mediaRecorder = new MediaRecorder(canvasStream, opts); }
-      catch { rec.mediaRecorder = new MediaRecorder(canvasStream); }
-      rec.mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) rec.chunks.push(e.data); };
-      rec.mediaRecorder.onstop = () => {
-        setTimeout(() => {
-          const type = rec.mediaRecorder.mimeType || "video/webm";
-          rec.blob = new Blob(rec.chunks, { type });
-          if (rec.canvasStream) {
-            rec.canvasStream.getVideoTracks().forEach(t => { try { t.stop(); } catch (e) {} });
-            rec.canvasStream = null;
+    async function startRecording() {
+      try {
+        if (!rec.stream || !rec.stream.active) {
+          toast("Abrindo câmera…");
+          await startCamera();
+          startLoop();
+          if (!rec.stream) return toast("Câmera não pronta — permita o acesso");
+        }
+        // garante que o vídeo já tem frames
+        const v = $("cam-video");
+        if (!v.videoWidth) {
+          await new Promise(r => setTimeout(r, 400));
+        }
+        if (!rec.anim) startLoop();
+
+        rec.chunks = [];
+        rec.recording = true;
+        rec.seconds = 0;
+        rec.blob = null;
+
+        const fps = isMobile() ? 25 : FPS;
+        const canvasStream = canvas.captureStream(fps);
+
+        const aTracks = rec.stream.getAudioTracks().filter(t => t.readyState === "live");
+        if (aTracks.length) {
+          try {
+            const track = aTracks[0].clone ? aTracks[0].clone() : aTracks[0];
+            track.enabled = true;
+            canvasStream.addTrack(track);
+          } catch (err) {
+            try { canvasStream.addTrack(aTracks[0]); } catch (e2) {
+              console.warn("áudio não anexado", e2);
+            }
           }
-          stopCamera();
-          if (rec.blob) $("result-video").src = URL.createObjectURL(rec.blob);
-          showScreen("result");
-        }, 120);
-      };
-      $("btn-rec").classList.add("recording");
-      $("timer").classList.remove("hidden");
-      $("rec-label").textContent = "Toque para parar";
-      updateTimer();
-      rec.timer = setInterval(() => {
-        rec.seconds++; updateTimer();
-        if (rec.seconds >= 90) stopRecording();
-      }, 1000);
-      if (isMobile()) rec.mediaRecorder.start();
-      else rec.mediaRecorder.start(1000);
-      toast("Gravando…");
+        } else {
+          toast("Sem microfone — gravando só vídeo");
+        }
+        rec.canvasStream = canvasStream;
+
+        const mime = pickMime();
+        console.log("[BrandVídeo] gravando mime:", mime || "default");
+        let mr;
+        try {
+          mr = new MediaRecorder(canvasStream, {
+            mimeType: mime || undefined,
+            videoBitsPerSecond: isMobile() ? 1200000 : 2500000,
+            audioBitsPerSecond: 128000
+          });
+        } catch (e1) {
+          try { mr = new MediaRecorder(canvasStream, mime ? { mimeType: mime } : undefined); }
+          catch (e2) { mr = new MediaRecorder(canvasStream); }
+        }
+        rec.mediaRecorder = mr;
+
+        mr.ondataavailable = (e) => {
+          if (e.data && e.data.size) rec.chunks.push(e.data);
+        };
+        mr.onerror = (e) => {
+          console.error("MediaRecorder error", e);
+          toast("Erro no gravador");
+          rec.recording = false;
+        };
+        mr.onstop = () => {
+          setTimeout(() => {
+            const type = (rec.mediaRecorder && rec.mediaRecorder.mimeType) || "video/webm";
+            rec.blob = new Blob(rec.chunks, { type });
+            console.log("[BrandVídeo] gravado", rec.chunks.length, "chunks", rec.blob.size, "bytes");
+            if (rec.canvasStream) {
+              rec.canvasStream.getVideoTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+              rec.canvasStream = null;
+            }
+            stopCamera();
+            if (rec.blob && rec.blob.size > 500) {
+              $("result-video").src = URL.createObjectURL(rec.blob);
+              showScreen("result");
+            } else {
+              toast("Gravação vazia — tente de novo");
+              showScreen("camera");
+              startCamera().then(() => startLoop());
+            }
+          }, 150);
+        };
+
+        $("btn-rec").classList.add("recording");
+        $("timer").classList.remove("hidden");
+        $("rec-label").textContent = "Toque para parar";
+        updateTimer();
+        rec.timer = setInterval(() => {
+          rec.seconds++;
+          updateTimer();
+          if (rec.seconds >= 90) stopRecording();
+        }, 1000);
+
+        // mobile: sem timeslice; desktop: 1s
+        if (isMobile()) mr.start();
+        else mr.start(1000);
+
+        toast("Gravando…");
+      } catch (err) {
+        console.error(err);
+        rec.recording = false;
+        toast("Falha ao gravar: " + (err.message || "tente de novo"));
+      }
     }
     function stopRecording() {
       if (!rec.recording) return;
