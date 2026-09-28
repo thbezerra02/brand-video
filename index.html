@@ -291,7 +291,7 @@
             <div class="admin-header">
               <div>
                 <h1>Dashboard</h1>
-                <p class="sub">Visão geral das suas campanhas</p>
+                <p class="sub" id="dash-mode-sub">Visão geral das suas campanhas</p>
               </div>
               <button type="button" class="btn btn-primary" id="btn-dash-new">+ Nova campanha</button>
             </div>
@@ -487,8 +487,25 @@
 
   <div id="bv-toast" class="toast"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
   (function () {
+    // ========== NUVEM (Supabase) ==========
+    // Preencha com o projeto em https://supabase.com → Settings → API
+    // Deixe vazio para usar só este navegador (modo local)
+    const CLOUD = {
+      url: "https://agkbeuzovhblohisbnzn.supabase.co",
+      anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFna2JldXpvdmhibG9oaXNibnpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MDk3NTEsImV4cCI6MjEwNjE4NTc1MX0.j7yi3FEnwcMPhETCI9r-dMhl2ht6brW-98SDR648XU8"
+    };
+    function cloudOn() { return !!(CLOUD.url && CLOUD.anonKey); }
+    let sb = null;
+    if (cloudOn() && window.supabase) {
+      sb = window.supabase.createClient(CLOUD.url, CLOUD.anonKey);
+      console.log("[BrandVídeo] modo NUVEM");
+    } else {
+      console.log("[BrandVídeo] modo LOCAL (preencha CLOUD.url e CLOUD.anonKey para nuvem)");
+    }
+
     const OUT_W = 720, OUT_H = 1280, FOOTER_RATIO = 0.22, FPS = 25;
     const FOOTER_H = Math.round(OUT_H * FOOTER_RATIO);
     const KEY = "brandvideo_campaigns_v1";
@@ -533,22 +550,15 @@
     function uid() {
       return "c_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
     }
-    function listCampaigns() {
-      try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
-    }
-    function saveCampaigns(list) { localStorage.setItem(KEY, JSON.stringify(list)); }
-    function getCampaign(id) { return listCampaigns().find(c => c.id === id) || null; }
-    function upsertCampaign(data) {
-      const list = listCampaigns();
-      const i = list.findIndex(c => c.id === data.id);
-      if (i >= 0) list[i] = { ...list[i], ...data, updatedAt: Date.now() };
-      else list.unshift({ ...data, createdAt: Date.now(), updatedAt: Date.now() });
-      saveCampaigns(list);
-    }
     function publicLink(id) {
       return location.origin + location.pathname.replace(/\/$/, "") + "/#/g/" + encodeURIComponent(id);
     }
 
+    // —— Local fallback ——
+    function listCampaignsLocal() {
+      try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
+    }
+    function saveCampaignsLocal(list) { localStorage.setItem(KEY, JSON.stringify(list)); }
     function openDb() {
       return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, 1);
@@ -562,28 +572,133 @@
         req.onerror = () => reject(req.error);
       });
     }
+
+    async function listCampaigns() {
+      if (!cloudOn() || !sb) return listCampaignsLocal();
+      const { data, error } = await sb.from("campaigns").select("*").order("created_at", { ascending: false });
+      if (error) { console.error(error); toast("Erro ao carregar campanhas: " + error.message); return listCampaignsLocal(); }
+      return (data || []).map(row => ({
+        id: row.id,
+        name: row.name,
+        title: row.title,
+        image: row.image_url,
+        prompts: row.prompts || [],
+        createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now()
+      }));
+    }
+
+    async function getCampaign(id) {
+      if (!cloudOn() || !sb) return listCampaignsLocal().find(c => c.id === id) || null;
+      const { data, error } = await sb.from("campaigns").select("*").eq("id", id).maybeSingle();
+      if (error) { console.error(error); return null; }
+      if (!data) return null;
+      return {
+        id: data.id,
+        name: data.name,
+        title: data.title,
+        image: data.image_url,
+        prompts: data.prompts || [],
+        createdAt: data.created_at ? new Date(data.created_at).getTime() : Date.now()
+      };
+    }
+
+    async function uploadDataUrl(bucket, path, dataUrl) {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const { error } = await sb.storage.from(bucket).upload(path, blob, { upsert: true, contentType: blob.type || "image/jpeg" });
+      if (error) throw error;
+      const { data } = sb.storage.from(bucket).getPublicUrl(path);
+      return data.publicUrl;
+    }
+
+    async function upsertCampaign(data) {
+      // data.image pode ser dataURL ou URL http
+      if (!cloudOn() || !sb) {
+        const list = listCampaignsLocal();
+        const i = list.findIndex(c => c.id === data.id);
+        if (i >= 0) list[i] = { ...list[i], ...data, updatedAt: Date.now() };
+        else list.unshift({ ...data, createdAt: Date.now(), updatedAt: Date.now() });
+        saveCampaignsLocal(list);
+        return data;
+      }
+      let imageUrl = data.image;
+      if (imageUrl && imageUrl.startsWith("data:")) {
+        toast("Enviando imagem…");
+        imageUrl = await uploadDataUrl("banners", data.id + "/banner.jpg", imageUrl);
+      }
+      const row = {
+        id: data.id,
+        name: data.name,
+        title: data.title || data.name,
+        image_url: imageUrl,
+        prompts: data.prompts || [],
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await sb.from("campaigns").upsert(row);
+      if (error) throw error;
+      return { ...data, image: imageUrl };
+    }
+
     async function saveVideo({ campaignId, blob, shared }) {
-      const db = await openDb();
       const id = "v_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
-      const record = { id, campaignId, blob, type: blob.type || "video/webm", size: blob.size, authorized: true, shared: !!shared, createdAt: Date.now() };
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(DB_STORE, "readwrite");
-        tx.objectStore(DB_STORE).put(record);
-        tx.oncomplete = () => resolve(record);
-        tx.onerror = () => reject(tx.error);
+      if (!cloudOn() || !sb) {
+        const db = await openDb();
+        const record = { id, campaignId, blob, type: blob.type || "video/webm", size: blob.size, authorized: true, shared: !!shared, createdAt: Date.now() };
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, "readwrite");
+          tx.objectStore(DB_STORE).put(record);
+          tx.oncomplete = () => resolve(record);
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+      toast("Enviando vídeo…");
+      const ext = (blob.type || "").includes("mp4") ? "mp4" : "webm";
+      const path = campaignId + "/" + id + "." + ext;
+      const { error: upErr } = await sb.storage.from("videos").upload(path, blob, {
+        contentType: blob.type || "video/webm",
+        upsert: true
       });
+      if (upErr) throw upErr;
+      const { data: pub } = sb.storage.from("videos").getPublicUrl(path);
+      const row = {
+        id,
+        campaign_id: campaignId,
+        video_url: pub.publicUrl,
+        authorized: true,
+        shared: !!shared,
+        size_bytes: blob.size,
+        created_at: new Date().toISOString()
+      };
+      const { error } = await sb.from("videos").insert(row);
+      if (error) throw error;
+      return { id, campaignId, url: pub.publicUrl, size: blob.size, shared: !!shared, createdAt: Date.now() };
     }
+
     async function listVideos(campaignId) {
-      const db = await openDb();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(DB_STORE, "readonly");
-        const req = tx.objectStore(DB_STORE).index("campaignId").getAll(campaignId);
-        req.onsuccess = () => resolve((req.result || []).sort((a,b) => b.createdAt - a.createdAt));
-        req.onerror = () => reject(req.error);
-      });
+      if (!cloudOn() || !sb) {
+        const db = await openDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, "readonly");
+          const req = tx.objectStore(DB_STORE).index("campaignId").getAll(campaignId);
+          req.onsuccess = () => resolve((req.result || []).sort((a,b) => b.createdAt - a.createdAt));
+          req.onerror = () => reject(req.error);
+        });
+      }
+      const { data, error } = await sb.from("videos").select("*").eq("campaign_id", campaignId).order("created_at", { ascending: false });
+      if (error) { console.error(error); return []; }
+      return (data || []).map(v => ({
+        id: v.id,
+        campaignId: v.campaign_id,
+        url: v.video_url,
+        size: v.size_bytes || 0,
+        authorized: v.authorized,
+        shared: v.shared,
+        createdAt: v.created_at ? new Date(v.created_at).getTime() : Date.now()
+      }));
     }
+
     async function countAllVideos() {
-      const camps = listCampaigns();
+      const camps = await listCampaigns();
       let total = 0, shared = 0;
       for (const c of camps) {
         const vs = await listVideos(c.id);
@@ -592,16 +707,28 @@
       }
       return { total, shared };
     }
+
     async function deleteVideosByCampaign(campaignId) {
-      const videos = await listVideos(campaignId);
-      const db = await openDb();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(DB_STORE, "readwrite");
-        const store = tx.objectStore(DB_STORE);
-        videos.forEach(v => store.delete(v.id));
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
+      if (!cloudOn() || !sb) {
+        const videos = await listVideos(campaignId);
+        const db = await openDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, "readwrite");
+          const store = tx.objectStore(DB_STORE);
+          videos.forEach(v => store.delete(v.id));
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+      await sb.from("videos").delete().eq("campaign_id", campaignId);
+      await sb.from("campaigns").delete().eq("id", campaignId);
+    }
+
+    async function deleteCampaign(id) {
+      await deleteVideosByCampaign(id);
+      if (!cloudOn() || !sb) {
+        saveCampaignsLocal(listCampaignsLocal().filter(c => c.id !== id));
+      }
     }
 
     function showScreen(name) {
@@ -692,8 +819,8 @@
     $("btn-dash-new").onclick = () => openEdit(null);
     $("btn-list-new").onclick = () => openEdit(null);
 
-    function renderCampaignRows(containerId, emptyId) {
-      const list = listCampaigns();
+    async function renderCampaignRows(containerId, emptyId) {
+      const list = await listCampaigns();
       const box = $(containerId);
       box.innerHTML = "";
       if (emptyId) $(emptyId).classList.toggle("hidden", list.length > 0);
@@ -713,7 +840,7 @@
     }
 
     async function renderDashboard() {
-      const list = listCampaigns();
+      const list = await listCampaigns();
       $("stat-campaigns").textContent = String(list.length);
       try {
         const { total, shared } = await countAllVideos();
@@ -723,19 +850,19 @@
         $("stat-videos").textContent = "0";
         $("stat-shared").textContent = "0";
       }
-      renderCampaignRows("dash-campaign-list", "dash-empty");
+      await renderCampaignRows("dash-campaign-list", "dash-empty");
     }
 
-    function renderCampaignList() {
-      renderCampaignRows("campaign-list", "list-empty");
+    async function renderCampaignList() {
+      await renderCampaignRows("campaign-list", "list-empty");
     }
 
-    function openEdit(id) {
+    async function openEdit(id) {
       editId = id || null;
       imageDataUrl = null;
       $("edit-heading").textContent = id ? "Editar campanha" : "Nova campanha";
       if (id) {
-        const c = getCampaign(id);
+        const c = await getCampaign(id);
         if (!c) return;
         $("field-name").value = c.name || "";
         $("field-title").value = c.title || "";
@@ -761,7 +888,7 @@
 
     async function openDetail(id) {
       currentCampaignId = id;
-      const c = getCampaign(id);
+      const c = await getCampaign(id);
       if (!c) return;
       $("detail-title").textContent = c.title || c.name || "Campanha";
       $("detail-name").textContent = "Autorização como: " + (c.name || "—");
@@ -778,16 +905,17 @@
       box.innerHTML = "";
       $("video-empty").classList.toggle("hidden", videos.length > 0);
       videos.forEach(v => {
-        const url = URL.createObjectURL(v.blob);
+        const url = v.url || (v.blob ? URL.createObjectURL(v.blob) : "");
         const el = document.createElement("div");
         el.className = "video-row";
         const dt = new Date(v.createdAt).toLocaleString("pt-BR");
-        el.innerHTML = `<video src="${url}" muted playsinline></video>
+        const kb = v.size ? (v.size/1024).toFixed(0) + " KB · " : "";
+        el.innerHTML = `<video src="${url}" muted playsinline controls></video>
           <div class="meta">
             <div>${dt}</div>
-            <span>${(v.size/1024).toFixed(0)} KB · ${v.shared ? "Compartilhou" : "Só enviou"}</span>
+            <span>${kb}${v.shared ? "Compartilhou" : "Só enviou"}</span>
             <div style="margin-top:8px">
-              <a class="btn btn-secondary btn-sm" style="background:#f8fafc;color:#0f172a;border-color:#cbd5e1" href="${url}" download="brandvideo-${v.id}.webm">Baixar</a>
+              <a class="btn btn-secondary btn-sm" style="background:#f8fafc;color:#0f172a;border-color:#cbd5e1" href="${url}" download="brandvideo-${v.id}.webm" target="_blank" rel="noopener">Baixar</a>
             </div>
           </div>`;
         box.appendChild(el);
@@ -806,16 +934,21 @@
       reader.onload = () => { imageDataUrl = reader.result; updateBannerPreview(); };
       reader.readAsDataURL(file);
     };
-    $("btn-save-campaign").onclick = () => {
+    $("btn-save-campaign").onclick = async () => {
       const name = $("field-name").value.trim();
       if (!name) return toast("Informe o nome do contratante");
       if (!imageDataUrl) return toast("Escolha a imagem do rodapé");
       const title = $("field-title").value.trim() || name;
       const prompts = $("field-prompts").value.split("\n").map(s => s.trim()).filter(Boolean);
       const id = editId || uid();
-      upsertCampaign({ id, name, title, image: imageDataUrl, prompts });
-      toast("Campanha salva");
-      openDetail(id);
+      try {
+        await upsertCampaign({ id, name, title, image: imageDataUrl, prompts });
+        toast(cloudOn() ? "Campanha salva na nuvem" : "Campanha salva neste navegador");
+        await openDetail(id);
+      } catch (e) {
+        console.error(e);
+        toast("Erro ao salvar: " + (e.message || e));
+      }
     };
     $("btn-copy-link").onclick = async () => {
       const link = $("detail-link").textContent;
@@ -828,16 +961,15 @@
     $("btn-delete-campaign").onclick = async () => {
       if (!currentCampaignId) return;
       if (!confirm("Excluir esta campanha e os vídeos locais?")) return;
-      await deleteVideosByCampaign(currentCampaignId);
-      saveCampaigns(listCampaigns().filter(c => c.id !== currentCampaignId));
+      await deleteCampaign(currentCampaignId);
       toast("Campanha excluída");
       currentCampaignId = null;
       showAdminView("campaigns");
     };
 
     // —— Gravar ——
-    function openGravar(id) {
-      const c = getCampaign(id);
+    async function openGravar(id) {
+      const c = await getCampaign(id);
       gravarCampaign = c;
       if (!c || !c.image) {
         $("gravar-error").style.display = "block";
@@ -1040,7 +1172,14 @@
       toast("Download iniciado");
     };
 
+    function updateModeLabel() {
+      const el = $("dash-mode-sub");
+      if (el) el.textContent = cloudOn()
+        ? "Nuvem ativa — funciona em qualquer celular"
+        : "Modo local — só neste navegador (configure CLOUD no código)";
+    }
     window.addEventListener("hashchange", route);
+    updateModeLabel();
     route();
   })();
   </script>
