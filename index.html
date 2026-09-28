@@ -10,8 +10,8 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #0f172a; --card: #1e293b; --primary: #3b82f6; --text: #f8fafc;
-      --muted: #94a3b8; --danger: #ef4444; --border: #334155;
-      --safe-b: env(safe-area-inset-bottom, 0px);
+      --muted: #94a3b8; --danger: #ef4444; --border: #334155; --ok: #22c55e;
+      --sidebar: #0b1220; --safe-b: env(safe-area-inset-bottom, 0px);
     }
     html, body {
       min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -19,11 +19,9 @@
     }
     a { color: var(--primary); }
     .wrap { max-width: 480px; margin: 0 auto; padding: 24px 16px calc(24px + var(--safe-b)); }
-    .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
-    .top h1 { font-size: 1.2rem; font-weight: 600; }
     .btn {
-      border: none; border-radius: 12px; font-size: 1rem; font-weight: 600;
-      padding: 14px 20px; cursor: pointer; display: inline-flex; align-items: center;
+      border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 600;
+      padding: 12px 18px; cursor: pointer; display: inline-flex; align-items: center;
       justify-content: center; gap: 8px; text-decoration: none; color: inherit;
     }
     .btn:active { transform: scale(0.98); }
@@ -33,6 +31,7 @@
     .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
     .btn-block { width: 100%; }
     .btn-danger { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 8px 12px; font-size: 0.8rem; border-radius: 8px; }
     .card {
       background: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 14px;
       border: 1px solid var(--border);
@@ -47,7 +46,7 @@
     .toast {
       position: fixed; bottom: calc(20px + var(--safe-b)); left: 50%; transform: translateX(-50%);
       background: #1e293b; color: #fff; padding: 12px 20px; border-radius: 24px;
-      font-size: 0.9rem; z-index: 200; max-width: 90%; text-align: center;
+      font-size: 0.9rem; z-index: 300; max-width: 90%; text-align: center;
       box-shadow: 0 4px 20px rgba(0,0,0,.4); opacity: 0; pointer-events: none; transition: .2s;
     }
     .toast.show { opacity: 1; }
@@ -55,18 +54,11 @@
       display: inline-block; font-size: 0.75rem; padding: 4px 10px; border-radius: 20px;
       background: #0f172a; color: var(--muted); border: 1px solid var(--border);
     }
+    .badge-ok { color: #86efac; border-color: #166534; background: #052e16; }
     .link-box {
       background: #0f172a; border: 1px dashed var(--border); border-radius: 10px;
       padding: 12px; font-size: 0.8rem; word-break: break-all; color: #93c5fd; margin-bottom: 10px;
     }
-    .video-item {
-      display: flex; gap: 12px; align-items: center; padding: 12px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .video-item:last-child { border-bottom: none; }
-    .video-item video { width: 72px; height: 128px; object-fit: cover; border-radius: 8px; background: #000; }
-    .video-item .meta { flex: 1; font-size: 0.85rem; }
-    .video-item .meta span { display: block; color: var(--muted); font-size: 0.75rem; margin-top: 4px; }
     .empty { text-align: center; color: var(--muted); padding: 32px 12px; font-size: 0.9rem; }
     .logo { text-align: center; padding: 40px 0 24px; }
     .logo .icon { font-size: 3rem; }
@@ -118,6 +110,110 @@
     .pol h2 { font-size: 1.05rem; margin: 28px 0 8px; color: #f8fafc; }
     .pol p, .pol li { color: #94a3b8; font-size: 0.95rem; margin-bottom: 10px; line-height: 1.6; }
     .pol ul { padding-left: 1.2rem; margin-bottom: 12px; }
+
+    /* ===== PAINEL ADMIN (sidebar) ===== */
+    #screen-painel.screen.active {
+      display: flex; min-height: 100vh; min-height: 100dvh; padding: 0; max-width: none; margin: 0;
+    }
+    .admin {
+      display: flex; width: 100%; min-height: 100vh; min-height: 100dvh; background: #f1f5f9; color: #0f172a;
+    }
+    .sidebar {
+      width: 240px; flex-shrink: 0; background: #0b1220; color: #e2e8f0;
+      display: flex; flex-direction: column; padding: 16px 12px;
+    }
+    .sidebar .brand {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px 20px;
+      border-bottom: 1px solid #1e293b; margin-bottom: 12px;
+    }
+    .sidebar .brand .dot {
+      width: 36px; height: 36px; border-radius: 10px; background: var(--primary);
+      display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    }
+    .sidebar .brand strong { display: block; font-size: 0.95rem; }
+    .sidebar .brand span { font-size: 0.7rem; color: #64748b; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 11px 12px; border: none; border-radius: 10px; background: transparent;
+      color: #94a3b8; font-size: 0.9rem; font-weight: 500; cursor: pointer; text-align: left;
+    }
+    .nav-item:hover { background: #1e293b; color: #f8fafc; }
+    .nav-item.active { background: #1e3a5f; color: #fff; }
+    .nav-item .ico { width: 20px; text-align: center; }
+    .sidebar .nav-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid #1e293b; }
+    .admin-main {
+      flex: 1; overflow: auto; padding: 20px 20px calc(20px + var(--safe-b));
+    }
+    .admin-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .admin-header h1 { font-size: 1.35rem; font-weight: 700; color: #0f172a; }
+    .admin-header .sub { font-size: 0.85rem; color: #64748b; margin-top: 2px; }
+    .stat-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 18px;
+    }
+    .stat {
+      background: #fff; border-radius: 14px; padding: 14px 16px;
+      border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    .stat .label { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
+    .stat .value { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+    .stat.blue .value { color: #2563eb; }
+    .stat.green .value { color: #16a34a; }
+    .stat.orange .value { color: #ea580c; }
+    .panel-card {
+      background: #fff; border-radius: 14px; padding: 16px;
+      border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,.04); margin-bottom: 14px;
+    }
+    .panel-card h2 { font-size: 1rem; margin-bottom: 12px; color: #0f172a; }
+    .camp-row {
+      display: flex; gap: 12px; align-items: center; padding: 12px;
+      border-radius: 12px; cursor: pointer; border: 1px solid transparent;
+    }
+    .camp-row:hover { background: #f8fafc; border-color: #e2e8f0; }
+    .camp-row img, .camp-thumb {
+      width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: #0f172a; flex-shrink: 0;
+    }
+    .camp-row .info { flex: 1; min-width: 0; }
+    .camp-row .info strong { display: block; color: #0f172a; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .camp-row .info span { font-size: 0.8rem; color: #64748b; }
+    .video-row {
+      display: flex; gap: 12px; align-items: center; padding: 12px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .video-row:last-child { border-bottom: none; }
+    .video-row video {
+      width: 64px; height: 114px; object-fit: cover; border-radius: 8px; background: #0f172a; flex-shrink: 0;
+    }
+    .video-row .meta { flex: 1; font-size: 0.85rem; color: #0f172a; }
+    .video-row .meta span { display: block; color: #64748b; font-size: 0.75rem; margin-top: 4px; }
+    .light-input {
+      width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #cbd5e1;
+      background: #fff; color: #0f172a; font-size: 1rem; margin-bottom: 14px;
+    }
+    textarea.light-input { min-height: 80px; resize: vertical; }
+    .light-label { display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 6px; }
+    .mobile-bar {
+      display: none; background: #0b1220; color: #fff; padding: 12px 14px;
+      align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 20;
+    }
+    .mobile-bar button {
+      background: #1e293b; border: none; color: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer;
+    }
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed; inset: 0 auto 0 0; z-index: 40; transform: translateX(-105%);
+        transition: transform .2s; width: 260px; box-shadow: 4px 0 24px rgba(0,0,0,.3);
+      }
+      .sidebar.open { transform: translateX(0); }
+      .mobile-bar { display: flex; }
+      .admin-main { padding: 14px; }
+      .sidebar-backdrop {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 35;
+      }
+      .sidebar-backdrop.show { display: block; }
+    }
   </style>
 </head>
 <body>
@@ -152,61 +248,150 @@
     </div>
   </section>
 
-  <!-- PAINEL LISTA -->
+  <!-- PAINEL ADMIN -->
   <section id="screen-painel" class="screen">
-    <div class="wrap">
-      <div class="top">
-        <button type="button" class="btn btn-ghost" data-go="home" style="padding:8px 12px;font-size:0.85rem">← Início</button>
-        <h1>Painel</h1>
-        <span style="width:64px"></span>
-      </div>
-      <div id="painel-list-view">
-        <button type="button" id="btn-new-campaign" class="btn btn-primary btn-block" style="margin-bottom:16px">+ Nova campanha</button>
-        <div id="campaign-list"></div>
-        <p class="empty hidden" id="list-empty">Nenhuma campanha ainda. Crie a primeira.</p>
-      </div>
-      <div id="painel-edit-view" class="hidden">
-        <div class="card">
-          <label class="field" for="field-name">Nome do contratante (aparece na autorização)</label>
-          <input type="text" id="field-name" placeholder="Ex: João Silva Deputado" maxlength="80" />
-          <label class="field" for="field-title">Título da campanha (só no painel)</label>
-          <input type="text" id="field-title" placeholder="Ex: Apoio redes setembro" maxlength="80" />
-          <label class="field">Imagem do rodapé (banner)</label>
-          <div class="preview-banner" id="banner-preview">
-            <div class="empty" style="padding:28px 8px" id="banner-empty">Toque para escolher a imagem</div>
-            <img id="banner-img" class="hidden" alt="Banner" />
+    <div class="admin">
+      <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <div class="dot">📹</div>
+          <div>
+            <strong>BrandVídeo</strong>
+            <span>Painel do contratante</span>
           </div>
-          <input type="file" id="field-image" accept="image/*" class="hidden" />
-          <button type="button" id="btn-pick-image" class="btn btn-secondary btn-block" style="margin-bottom:14px">Escolher imagem</button>
-          <label class="field" for="field-prompts">Perguntas na tela (opcional, uma por linha)</label>
-          <textarea id="field-prompts" placeholder="Por que você apoia esta causa?"></textarea>
-          <p class="hint">Quem gravar verá essas dicas. Pode ignorar e falar livremente.</p>
-          <button type="button" id="btn-save-campaign" class="btn btn-primary btn-block">Salvar campanha</button>
-          <button type="button" id="btn-cancel-edit" class="btn btn-ghost btn-block" style="margin-top:8px">Cancelar</button>
         </div>
-      </div>
-      <div id="painel-detail-view" class="hidden">
-        <div class="card">
-          <p style="font-weight:600;margin-bottom:4px" id="detail-title">—</p>
-          <p style="font-size:0.85rem;color:#94a3b8;margin-bottom:12px" id="detail-name">—</p>
-          <div class="preview-banner"><img id="detail-banner" alt="Banner" style="width:100%;height:100%;object-fit:cover" /></div>
-          <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:6px">Link para enviar às pessoas</p>
-          <div class="link-box" id="detail-link">—</div>
-          <button type="button" id="btn-copy-link" class="btn btn-primary btn-block">Copiar link</button>
-          <button type="button" id="btn-open-gravar" class="btn btn-secondary btn-block" style="margin-top:8px">Abrir página de gravar</button>
-          <button type="button" id="btn-edit-campaign" class="btn btn-ghost btn-block" style="margin-top:8px">Editar campanha</button>
+        <button type="button" class="nav-item active" data-nav="dashboard" id="nav-dashboard">
+          <span class="ico">📊</span> Dashboard
+        </button>
+        <button type="button" class="nav-item" data-nav="campaigns" id="nav-campaigns">
+          <span class="ico">📁</span> Campanhas
+        </button>
+        <button type="button" class="nav-item" data-nav="new" id="nav-new">
+          <span class="ico">➕</span> Nova campanha
+        </button>
+        <div class="nav-foot">
+          <button type="button" class="nav-item" data-go="home">
+            <span class="ico">🏠</span> Início do site
+          </button>
+          <button type="button" class="nav-item" data-go="politica">
+            <span class="ico">📄</span> Política de privacidade
+          </button>
         </div>
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <strong>Vídeos recebidos</strong>
-            <span class="badge" id="video-count">0</span>
+      </aside>
+
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+        <div class="mobile-bar">
+          <button type="button" id="btn-menu">☰ Menu</button>
+          <strong style="font-size:0.95rem">BrandVídeo</strong>
+          <span style="width:64px"></span>
+        </div>
+        <div class="admin-main">
+          <!-- DASHBOARD -->
+          <div id="view-dashboard">
+            <div class="admin-header">
+              <div>
+                <h1>Dashboard</h1>
+                <p class="sub">Visão geral das suas campanhas</p>
+              </div>
+              <button type="button" class="btn btn-primary" id="btn-dash-new">+ Nova campanha</button>
+            </div>
+            <div class="stat-row">
+              <div class="stat blue">
+                <div class="label">Campanhas</div>
+                <div class="value" id="stat-campaigns">0</div>
+              </div>
+              <div class="stat green">
+                <div class="label">Vídeos recebidos</div>
+                <div class="value" id="stat-videos">0</div>
+              </div>
+              <div class="stat orange">
+                <div class="label">Compartilhados</div>
+                <div class="value" id="stat-shared">0</div>
+              </div>
+            </div>
+            <div class="panel-card">
+              <h2>Campanhas recentes</h2>
+              <div id="dash-campaign-list"></div>
+              <p class="empty hidden" id="dash-empty" style="color:#64748b">Nenhuma campanha ainda.</p>
+            </div>
           </div>
-          <p class="hint">MVP local: vídeos neste navegador. Em produção → nuvem.</p>
-          <div id="video-list"></div>
-          <p class="empty hidden" id="video-empty">Nenhum vídeo enviado ainda.</p>
+
+          <!-- LISTA CAMPANHAS -->
+          <div id="view-campaigns" class="hidden">
+            <div class="admin-header">
+              <div>
+                <h1>Campanhas</h1>
+                <p class="sub">Gerencie links e vídeos</p>
+              </div>
+              <button type="button" class="btn btn-primary" id="btn-list-new">+ Nova</button>
+            </div>
+            <div class="panel-card">
+              <div id="campaign-list"></div>
+              <p class="empty hidden" id="list-empty" style="color:#64748b">Nenhuma campanha. Crie a primeira.</p>
+            </div>
+          </div>
+
+          <!-- EDITAR -->
+          <div id="view-edit" class="hidden">
+            <div class="admin-header">
+              <div>
+                <h1 id="edit-heading">Nova campanha</h1>
+                <p class="sub">Nome, imagem e perguntas</p>
+              </div>
+            </div>
+            <div class="panel-card">
+              <label class="light-label" for="field-name">Nome do contratante (aparece na autorização)</label>
+              <input type="text" class="light-input" id="field-name" placeholder="Ex: João Silva Deputado" maxlength="80" />
+              <label class="light-label" for="field-title">Título da campanha (só no painel)</label>
+              <input type="text" class="light-input" id="field-title" placeholder="Ex: Apoio redes setembro" maxlength="80" />
+              <label class="light-label">Imagem do rodapé (banner)</label>
+              <div class="preview-banner" id="banner-preview" style="border-color:#cbd5e1">
+                <div class="empty" style="padding:28px 8px;color:#64748b" id="banner-empty">Toque para escolher a imagem</div>
+                <img id="banner-img" class="hidden" alt="Banner" />
+              </div>
+              <input type="file" id="field-image" accept="image/*" class="hidden" />
+              <button type="button" id="btn-pick-image" class="btn btn-secondary btn-block" style="margin-bottom:14px;background:#f8fafc;color:#0f172a;border-color:#cbd5e1">Escolher imagem</button>
+              <label class="light-label" for="field-prompts">Perguntas na tela (opcional, uma por linha)</label>
+              <textarea class="light-input" id="field-prompts" placeholder="Por que você apoia esta causa?"></textarea>
+              <p class="hint" style="color:#64748b">Quem gravar verá essas dicas. Pode ignorar e falar livremente.</p>
+              <button type="button" id="btn-save-campaign" class="btn btn-primary btn-block">Salvar campanha</button>
+              <button type="button" id="btn-cancel-edit" class="btn btn-ghost btn-block" style="margin-top:8px;color:#64748b;border-color:#cbd5e1">Cancelar</button>
+            </div>
+          </div>
+
+          <!-- DETALHE -->
+          <div id="view-detail" class="hidden">
+            <div class="admin-header">
+              <div>
+                <h1 id="detail-title">—</h1>
+                <p class="sub" id="detail-name">—</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-back-list" style="background:#fff;color:#0f172a;border-color:#cbd5e1">← Voltar</button>
+            </div>
+            <div class="panel-card">
+              <div class="preview-banner" style="border-color:#e2e8f0">
+                <img id="detail-banner" alt="Banner" style="width:100%;height:100%;object-fit:cover" />
+              </div>
+              <p style="font-size:0.8rem;color:#64748b;margin-bottom:6px">Link para enviar às pessoas</p>
+              <div class="link-box" id="detail-link" style="background:#f8fafc;border-color:#cbd5e1;color:#1d4ed8">—</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" id="btn-copy-link" class="btn btn-primary">Copiar link</button>
+                <button type="button" id="btn-open-gravar" class="btn btn-secondary" style="background:#fff;color:#0f172a;border-color:#cbd5e1">Abrir gravar</button>
+                <button type="button" id="btn-edit-campaign" class="btn btn-ghost btn-sm" style="color:#64748b;border-color:#cbd5e1">Editar</button>
+              </div>
+            </div>
+            <div class="panel-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <h2 style="margin:0">Vídeos recebidos</h2>
+                <span class="badge" id="video-count">0</span>
+              </div>
+              <p class="hint" style="color:#64748b">MVP local: vídeos neste navegador. Em produção → nuvem (qualquer celular).</p>
+              <div id="video-list"></div>
+              <p class="empty hidden" id="video-empty" style="color:#64748b">Nenhum vídeo enviado ainda.</p>
+            </div>
+            <button type="button" id="btn-delete-campaign" class="btn btn-danger btn-block">Excluir campanha</button>
+          </div>
         </div>
-        <button type="button" id="btn-back-list" class="btn btn-ghost btn-block">← Todas as campanhas</button>
-        <button type="button" id="btn-delete-campaign" class="btn btn-danger btn-block" style="margin-top:8px">Excluir campanha</button>
       </div>
     </div>
   </section>
@@ -214,7 +399,7 @@
   <!-- GRAVAR INTRO -->
   <section id="screen-gravar-intro" class="screen">
     <div class="wrap">
-      <div class="top"><span class="badge">Depoimento</span><span></span></div>
+      <div style="margin-bottom:12px"><span class="badge">Depoimento</span></div>
       <h1 style="font-size:1.3rem;margin-bottom:8px" id="intro-title">Gravar vídeo</h1>
       <p style="color:#94a3b8;font-size:0.9rem;margin-bottom:16px" id="intro-sub">A imagem da campanha já aparece no seu vídeo.</p>
       <div class="preview-banner"><img id="intro-banner" alt="Banner" style="width:100%;height:100%;object-fit:cover" /></div>
@@ -254,7 +439,7 @@
   <!-- RESULTADO -->
   <section id="screen-result" class="screen">
     <div class="wrap">
-      <div class="top">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <button type="button" class="btn btn-ghost" id="btn-redo" style="padding:8px 10px;font-size:0.85rem">← Gravar outro</button>
         <h1 style="font-size:1.1rem">Seu vídeo</h1>
         <span style="width:72px"></span>
@@ -277,31 +462,26 @@
       <h1 style="font-size:1.5rem;margin-bottom:8px">Política de privacidade</h1>
       <p style="font-size:0.8rem;color:#64748b;margin-bottom:24px">BrandVídeo · Última atualização: setembro/2026</p>
       <h2>1. Quem somos</h2>
-      <p>O BrandVídeo é uma ferramenta que permite gravar depoimentos em vídeo com a marca ou campanha de um contratante (político, empresa ou pessoa).</p>
+      <p>O BrandVídeo é uma ferramenta que permite gravar depoimentos em vídeo com a marca ou campanha de um contratante.</p>
       <h2>2. Quais dados coletamos</h2>
       <ul>
-        <li>Vídeo gravado por você (imagem e voz)</li>
+        <li>Vídeo gravado (imagem e voz)</li>
         <li>Data e hora do envio</li>
-        <li>Autorização de uso marcada por você</li>
+        <li>Autorização de uso</li>
         <li>Dados técnicos básicos quando necessário</li>
       </ul>
-      <p>Não pedimos CPF nem documentos para gravar.</p>
       <h2>3. Para que usamos</h2>
       <ul>
-        <li>Entregar o vídeo ao contratante que enviou o link</li>
-        <li>Permitir que ele baixe e, se você autorizou, divulgue o conteúdo</li>
-        <li>Melhorar o funcionamento da plataforma</li>
+        <li>Entregar o vídeo ao contratante do link</li>
+        <li>Permitir download e divulgação se autorizado</li>
+        <li>Melhorar a plataforma</li>
       </ul>
       <h2>4. Autorização de imagem e voz</h2>
-      <p>O uso do seu vídeo em redes e materiais depende da autorização que você marca antes de enviar. Sem essa marcação, o envio não é concluído.</p>
+      <p>O uso do vídeo depende da autorização marcada antes de enviar.</p>
       <h2>5. Com quem compartilhamos</h2>
-      <p>O vídeo é enviado ao <strong>contratante responsável pelo link</strong> que você acessou. Não vendemos seus dados para terceiros.</p>
-      <h2>6. Armazenamento e prazo</h2>
-      <p>Os vídeos ficam armazenados para o contratante acessar no painel. O prazo pode variar conforme o plano.</p>
-      <h2>7. Seus direitos (LGPD)</h2>
-      <p>Você pode solicitar acesso, correção ou exclusão de dados pessoais relacionados ao seu envio, na medida do possível e da lei.</p>
-      <h2>8. Contato</h2>
-      <p>Dúvidas: canal indicado pelo responsável do link que você recebeu.</p>
+      <p>O vídeo vai ao contratante responsável pelo link. Não vendemos dados.</p>
+      <h2>6. LGPD</h2>
+      <p>Você pode solicitar acesso, correção ou exclusão de dados pessoais relacionados ao envio, na medida da lei.</p>
     </div>
   </section>
 
@@ -334,7 +514,6 @@
       stream: null, facing: "user", recording: false, chunks: [], blob: null,
       seconds: 0, timer: null, anim: null, photo: null, mediaRecorder: null, canvasStream: null
     };
-
     const canvas = $("live-canvas");
     const ctx = canvas.getContext("2d", { alpha: false });
 
@@ -367,7 +546,7 @@
       saveCampaigns(list);
     }
     function publicLink(id) {
-      return location.origin + location.pathname + location.search.split("#")[0] + "#/g/" + encodeURIComponent(id);
+      return location.origin + location.pathname.replace(/\/$/, "") + "/#/g/" + encodeURIComponent(id);
     }
 
     function openDb() {
@@ -403,6 +582,16 @@
         req.onerror = () => reject(req.error);
       });
     }
+    async function countAllVideos() {
+      const camps = listCampaigns();
+      let total = 0, shared = 0;
+      for (const c of camps) {
+        const vs = await listVideos(c.id);
+        total += vs.length;
+        shared += vs.filter(v => v.shared).length;
+      }
+      return { total, shared };
+    }
     async function deleteVideosByCampaign(campaignId) {
       const videos = await listVideos(campaignId);
       const db = await openDb();
@@ -420,34 +609,24 @@
       if (screens[name]) screens[name].classList.add("active");
       if (name !== "politica") lastScreen = name;
       window.scrollTo(0, 0);
+      closeSidebar();
     }
 
-    // Router: #/  #/painel  #/g/ID  #/politica
     function route() {
       const hash = (location.hash || "#/").replace(/^#/, "") || "/";
       const parts = hash.split("/").filter(Boolean);
       stopRecIfNeeded();
       stopCamera();
-
-      if (parts[0] === "politica") {
-        showScreen("politica");
-        return;
-      }
+      if (parts[0] === "politica") { showScreen("politica"); return; }
       if (parts[0] === "painel") {
         showScreen("painel");
-        showPainelList();
+        showAdminView("dashboard");
         return;
       }
-      if (parts[0] === "g" && parts[1]) {
-        openGravar(parts[1]);
-        return;
-      }
+      if (parts[0] === "g" && parts[1]) { openGravar(parts[1]); return; }
       showScreen("home");
     }
-
-    function go(path) {
-      location.hash = path;
-    }
+    function go(path) { location.hash = path; }
 
     document.querySelectorAll("[data-go]").forEach(el => {
       el.addEventListener("click", (e) => {
@@ -466,35 +645,95 @@
       });
     });
 
-    // —— Painel ——
-    function showPainelList() {
-      $("painel-list-view").classList.remove("hidden");
-      $("painel-edit-view").classList.add("hidden");
-      $("painel-detail-view").classList.add("hidden");
+    // Sidebar mobile
+    function closeSidebar() {
+      $("sidebar").classList.remove("open");
+      $("sidebar-backdrop").classList.remove("show");
+    }
+    $("btn-menu").onclick = () => {
+      $("sidebar").classList.add("open");
+      $("sidebar-backdrop").classList.add("show");
+    };
+    $("sidebar-backdrop").onclick = closeSidebar;
+
+    function setNavActive(name) {
+      document.querySelectorAll(".nav-item[data-nav]").forEach(n => {
+        n.classList.toggle("active", n.getAttribute("data-nav") === name);
+      });
+    }
+
+    function showAdminView(name) {
+      ["dashboard", "campaigns", "edit", "detail"].forEach(v => {
+        const el = $("view-" + v);
+        if (el) el.classList.toggle("hidden", v !== name);
+      });
+      if (name === "dashboard") {
+        setNavActive("dashboard");
+        renderDashboard();
+      } else if (name === "campaigns") {
+        setNavActive("campaigns");
+        renderCampaignList();
+      } else if (name === "edit") {
+        setNavActive("new");
+      } else if (name === "detail") {
+        setNavActive("campaigns");
+      }
+      closeSidebar();
+    }
+
+    document.querySelectorAll("[data-nav]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const n = btn.getAttribute("data-nav");
+        if (n === "dashboard") showAdminView("dashboard");
+        if (n === "campaigns") showAdminView("campaigns");
+        if (n === "new") openEdit(null);
+      });
+    });
+    $("btn-dash-new").onclick = () => openEdit(null);
+    $("btn-list-new").onclick = () => openEdit(null);
+
+    function renderCampaignRows(containerId, emptyId) {
       const list = listCampaigns();
-      const box = $("campaign-list");
+      const box = $(containerId);
       box.innerHTML = "";
-      $("list-empty").classList.toggle("hidden", list.length > 0);
+      if (emptyId) $(emptyId).classList.toggle("hidden", list.length > 0);
       list.forEach(c => {
         const el = document.createElement("div");
-        el.className = "card";
-        el.style.cursor = "pointer";
-        el.innerHTML = `<div style="display:flex;gap:12px;align-items:center">
-          <div style="width:56px;height:56px;border-radius:8px;overflow:hidden;background:#000;flex-shrink:0">
-            ${c.image ? `<img src="${c.image}" style="width:100%;height:100%;object-fit:cover" />` : ""}
+        el.className = "camp-row";
+        el.innerHTML = `
+          ${c.image ? `<img src="${c.image}" alt="" />` : `<div class="camp-thumb"></div>`}
+          <div class="info">
+            <strong>${escapeHtml(c.title || c.name)}</strong>
+            <span>${escapeHtml(c.name || "")}</span>
           </div>
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(c.title || c.name)}</div>
-            <div style="font-size:0.8rem;color:#94a3b8">${escapeHtml(c.name || "")}</div>
-          </div><span style="color:#64748b">›</span></div>`;
+          <span style="color:#94a3b8">›</span>`;
         el.onclick = () => openDetail(c.id);
         box.appendChild(el);
       });
     }
 
+    async function renderDashboard() {
+      const list = listCampaigns();
+      $("stat-campaigns").textContent = String(list.length);
+      try {
+        const { total, shared } = await countAllVideos();
+        $("stat-videos").textContent = String(total);
+        $("stat-shared").textContent = String(shared);
+      } catch {
+        $("stat-videos").textContent = "0";
+        $("stat-shared").textContent = "0";
+      }
+      renderCampaignRows("dash-campaign-list", "dash-empty");
+    }
+
+    function renderCampaignList() {
+      renderCampaignRows("campaign-list", "list-empty");
+    }
+
     function openEdit(id) {
       editId = id || null;
       imageDataUrl = null;
+      $("edit-heading").textContent = id ? "Editar campanha" : "Nova campanha";
       if (id) {
         const c = getCampaign(id);
         if (!c) return;
@@ -508,9 +747,7 @@
         $("field-prompts").value = "";
       }
       updateBannerPreview();
-      $("painel-list-view").classList.add("hidden");
-      $("painel-detail-view").classList.add("hidden");
-      $("painel-edit-view").classList.remove("hidden");
+      showAdminView("edit");
     }
 
     function updateBannerPreview() {
@@ -530,9 +767,7 @@
       $("detail-name").textContent = "Autorização como: " + (c.name || "—");
       $("detail-banner").src = c.image || "";
       $("detail-link").textContent = publicLink(c.id);
-      $("painel-list-view").classList.add("hidden");
-      $("painel-edit-view").classList.add("hidden");
-      $("painel-detail-view").classList.remove("hidden");
+      showAdminView("detail");
       await renderVideos(id);
     }
 
@@ -545,19 +780,22 @@
       videos.forEach(v => {
         const url = URL.createObjectURL(v.blob);
         const el = document.createElement("div");
-        el.className = "video-item";
+        el.className = "video-row";
         const dt = new Date(v.createdAt).toLocaleString("pt-BR");
         el.innerHTML = `<video src="${url}" muted playsinline></video>
-          <div class="meta"><div>${dt}</div>
-          <span>${(v.size/1024).toFixed(0)} KB · ${v.shared ? "Compartilhou" : "Só enviou"}</span>
-          <div style="margin-top:8px"><a class="btn btn-secondary" style="padding:8px 12px;font-size:0.8rem" href="${url}" download="brandvideo-${v.id}.webm">Baixar</a></div></div>`;
+          <div class="meta">
+            <div>${dt}</div>
+            <span>${(v.size/1024).toFixed(0)} KB · ${v.shared ? "Compartilhou" : "Só enviou"}</span>
+            <div style="margin-top:8px">
+              <a class="btn btn-secondary btn-sm" style="background:#f8fafc;color:#0f172a;border-color:#cbd5e1" href="${url}" download="brandvideo-${v.id}.webm">Baixar</a>
+            </div>
+          </div>`;
         box.appendChild(el);
       });
     }
 
-    $("btn-new-campaign").onclick = () => openEdit(null);
-    $("btn-cancel-edit").onclick = () => showPainelList();
-    $("btn-back-list").onclick = () => showPainelList();
+    $("btn-cancel-edit").onclick = () => showAdminView("campaigns");
+    $("btn-back-list").onclick = () => showAdminView("campaigns");
     $("btn-edit-campaign").onclick = () => openEdit(currentCampaignId);
     $("btn-pick-image").onclick = () => $("field-image").click();
     $("banner-preview").onclick = () => $("field-image").click();
@@ -594,7 +832,7 @@
       saveCampaigns(listCampaigns().filter(c => c.id !== currentCampaignId));
       toast("Campanha excluída");
       currentCampaignId = null;
-      showPainelList();
+      showAdminView("campaigns");
     };
 
     // —— Gravar ——
@@ -618,9 +856,7 @@
       if (c.prompts && c.prompts.length) {
         $("prompts-list").innerHTML = c.prompts.map(p => "• " + escapeHtml(p)).join("<br>");
         $("prompts-box").classList.remove("hidden");
-      } else {
-        $("prompts-box").classList.add("hidden");
-      }
+      } else $("prompts-box").classList.add("hidden");
       const img = new Image();
       img.onload = () => { rec.photo = img; };
       img.src = c.image;
